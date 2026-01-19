@@ -1,0 +1,66 @@
+[20-Oct-2025 09:45:07 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/dialdyna/custom-office.dialdynamic.com/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/dialdyna/custom-office.dialdynamic.com/index.php on line 10
+[20-Oct-2025 09:46:38 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/dialdyna/custom-office.dialdynamic.com/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/dialdyna/custom-office.dialdynamic.com/index.php on line 10
+[20-Oct-2025 09:57:48 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/dialdyna/custom-office.dialdynamic.com/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/dialdyna/custom-office.dialdynamic.com/index.php on line 10
+[20-Oct-2025 10:01:09 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:01:26 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:01:33 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:01:45 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:01:48 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:09:59 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:10:08 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:11:11 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:12:11 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1042
+[20-Oct-2025 10:12:15 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1042
+[20-Oct-2025 10:12:15 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1042
+[20-Oct-2025 10:12:17 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1042
+[20-Oct-2025 10:12:46 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1042
+[20-Oct-2025 10:13:50 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:13:52 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:13:53 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:13:53 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:13:53 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:13:53 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1038
+[20-Oct-2025 10:16:26 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:23:58 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:24:04 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:24:21 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:26:26 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:28 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:30 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:30 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:30 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:30 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:31 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 10:27:31 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 11:09:27 UTC] PHP Parse error:  syntax error, unexpected token "return" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet_debug.php on line 37
+[20-Oct-2025 11:12:43 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 11:14:57 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 11:15:19 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 11:16:05 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[20-Oct-2025 11:23:22 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1009
+[20-Oct-2025 11:23:46 UTC] PHP Parse error:  syntax error, unexpected token "return" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet_debug.php on line 37
+[21-Oct-2025 04:12:31 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[21-Oct-2025 04:16:50 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[21-Oct-2025 05:12:17 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[29-Oct-2025 14:19:25 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[01-Nov-2025 06:57:34 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[06-Nov-2025 08:44:23 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdyna/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[09-Nov-2025 10:56:39 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/dialdynamic/custom-office.dialdynamic.com/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/dialdynamic/custom-office.dialdynamic.com/index.php on line 10
+[09-Nov-2025 10:58:46 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdynamic/custom-office.dialdynamic.com/spreadsheet.php on line 1035
+[19-Nov-2025 04:01:05 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/dialdynamic/custom-office.dialdynamic.com/index.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/dialdynamic/custom-office.dialdynamic.com/index.php on line 10
+[18-Jan-2026 10:05:54 UTC] PHP Parse error:  syntax error, unexpected identifier "version" in /home/dialdynamic/custom-office.dialdynamic.com/spreadsheet.php on line 1035
