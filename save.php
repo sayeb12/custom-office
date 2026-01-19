@@ -8,9 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($type === 'document') {
         $filename = $_POST['filename'] ?? '';
-        $content = $_POST['content'] ?? '';
+        $contentHtml = $_POST['content_html'] ?? ($_POST['content'] ?? '');
+        $contentJson = $_POST['content_json'] ?? '';
         $isNew = $_POST['isNew'] ?? false;
         $oldFilename = $_POST['oldFilename'] ?? '';
+        $isAutosave = isset($_POST['autosave']) && $_POST['autosave'] === 'true';
         
         if (empty($filename)) {
             echo json_encode(['success' => false, 'message' => 'Filename is required']);
@@ -23,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $db = (new Database())->getConnection();
+
+        // Sanitize HTML content to prevent XSS
+        $cleanHtml = sanitize_html($contentHtml);
         
         // Delete old file if renaming
         if (!$isNew && $oldFilename && $oldFilename !== $filename) {
@@ -48,9 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $stmt = $db->prepare($query);
         $stmt->bindParam(":filename", $filename);
-        $stmt->bindParam(":content", $content);
+        $stmt->bindParam(":content", $cleanHtml);
         
         if ($stmt->execute()) {
+            // On manual save, store a revision snapshot
+            if (!$isAutosave && $contentJson !== '') {
+                saveDocumentRevision($db, $filename, $contentJson);
+            }
+
             // Save to history
             saveToHistory('document', $filename);
             echo json_encode(['success' => true, 'filename' => $filename]);
@@ -123,5 +133,60 @@ function saveToHistory($type, $filename) {
     $timestamp = time();
     $stmt->bindParam(":timestamp", $timestamp);
     $stmt->execute();
+}
+
+function saveDocumentRevision(PDO $db, $filename, $contentJson) {
+    $query = "INSERT INTO document_revisions (filename, content_json) VALUES (:filename, :content_json)";
+    $stmt = $db->prepare($query);
+    $stmt->bindParam(':filename', $filename);
+    $stmt->bindParam(':content_json', $contentJson);
+    $stmt->execute();
+}
+
+function sanitize_html($html) {
+    if ($html === '') {
+        return '';
+    }
+
+    // Basic removal of script/style tags
+    $html = preg_replace('#<\s*(script|style)[^>]*>.*?<\s*/\s*\1\s*>#is', '', $html);
+
+    if (!class_exists('DOMDocument')) {
+        // Fallback: strip event handlers and javascript: URLs via regex
+        $html = preg_replace('/on\w+="[^"]*"/i', '', $html);
+        $html = preg_replace("/on\w+='[^']*'/i", '', $html);
+        $html = preg_replace('#(href|src)\s*=\s*"(javascript:[^"]*)"#i', '$1="#"', $html);
+        $html = preg_replace("#(href|src)\s*=\s*'(javascript:[^']*)'#i", '$1=\"#\"', $html);
+        return $html;
+    }
+
+    libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    // Remove script and event handler attributes
+    $xpath = new DOMXPath($dom);
+
+    foreach ($xpath->query('//script') as $node) {
+        $node->parentNode->removeChild($node);
+    }
+
+    foreach ($xpath->query('//@*') as $attr) {
+        if (stripos($attr->nodeName, 'on') === 0) {
+            $attr->ownerElement->removeAttributeNode($attr);
+            continue;
+        }
+
+        if (in_array(strtolower($attr->nodeName), ['href', 'src'], true)) {
+            if (preg_match('/^\s*javascript:/i', $attr->nodeValue)) {
+                $attr->ownerElement->setAttribute($attr->nodeName, '#');
+            }
+        }
+    }
+
+    $clean = $dom->saveHTML();
+    libxml_clear_errors();
+
+    return $clean;
 }
 ?>

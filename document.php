@@ -31,7 +31,45 @@ saveToHistory('document', $filename);
     <title><?php echo htmlspecialchars($filename); ?> - Document Editor</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/super-build/ckeditor.js"></script>
     <style>
+        :root {
+            --editor-zoom: 1;
+        }
+
+        .ck-editor__main {
+            background: #f0f2f5;
+            padding: 20px 0;
+        }
+
+        .ck-editor__editable_inline {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 30px;
+            min-height: 842px;
+            box-shadow: 0 0 0 1px #e0e0e0, 0 4px 20px rgba(0,0,0,0.08);
+            background: white;
+            transform: scale(var(--editor-zoom));
+            transform-origin: top center;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .zoom-controls input[type="range"] {
+            flex: 1;
+        }
+
+        .saving-status {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
         /* Resizable table styles */
         .resizable-table {
             position: relative;
@@ -187,8 +225,8 @@ saveToHistory('document', $filename);
                 <button onclick="printDocument()" class="btn btn-info">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <button onclick="showHistory()" class="btn btn-secondary">
-                    <i class="fas fa-history"></i> History
+                <button onclick="showVersionHistory()" class="btn btn-secondary">
+                    <i class="fas fa-history"></i> Version History
                 </button>
                 <button onclick="window.location.href='index.php'" class="btn btn-warning">
                     <i class="fas fa-home"></i> Home
@@ -197,103 +235,92 @@ saveToHistory('document', $filename);
             </div>
             
             <div class="format-toolbar">
-                <select id="fontFamily" onchange="formatText('fontName', this.value)">
-                    <option value="Arial">Arial</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Courier New">Courier New</option>
-                    <option value="Trebuchet MS">Trebuchet MS</option>
-                    <option value="Comic Sans MS">Comic Sans MS</option>
+                <select id="toolbarHeading" onchange="applyHeading(this.value)">
+                    <option value="paragraph">Normal text</option>
+                    <option value="heading1">Heading 1</option>
+                    <option value="heading2">Heading 2</option>
+                    <option value="heading3">Heading 3</option>
                 </select>
                 
-                <select id="fontSize" onchange="formatText('fontSize', this.value)">
-                    <option value="1">8pt</option>
-                    <option value="2">10pt</option>
-                    <option value="3" selected>12pt</option>
-                    <option value="4">14pt</option>
-                    <option value="5">18pt</option>
-                    <option value="6">24pt</option>
-                    <option value="7">36pt</option>
+                <select id="toolbarFontFamily" onchange="applyFontFamily(this.value)">
+                    <option value="">Font</option>
+                    <option value="Arial, Helvetica, sans-serif">Arial</option>
+                    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                    <option value="Georgia, 'Times New Roman', Times, serif">Georgia</option>
+                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
                 </select>
                 
-                <button onclick="formatText('bold')" class="format-btn" title="Bold (Ctrl+B)" id="boldBtn">
+                <select id="toolbarFontSize" onchange="applyFontSize(this.value)">
+                    <option value="">Size</option>
+                    <option value="10px">10</option>
+                    <option value="11px">11</option>
+                    <option value="12px">12</option>
+                    <option value="14px">14</option>
+                    <option value="18px">18</option>
+                    <option value="24px">24</option>
+                </select>
+                
+                <button type="button" onclick="toggleBold()" class="format-btn" title="Bold (Ctrl+B)">
                     <i class="fas fa-bold"></i>
                 </button>
-                <button onclick="formatText('italic')" class="format-btn" title="Italic (Ctrl+I)" id="italicBtn">
+                <button type="button" onclick="toggleItalic()" class="format-btn" title="Italic (Ctrl+I)">
                     <i class="fas fa-italic"></i>
                 </button>
-                <button onclick="formatText('underline')" class="format-btn" title="Underline (Ctrl+U)" id="underlineBtn">
+                <button type="button" onclick="toggleUnderline()" class="format-btn" class="format-btn" title="Underline (Ctrl+U)">
                     <i class="fas fa-underline"></i>
                 </button>
-                <button onclick="formatText('strikeThrough')" class="format-btn" title="Strikethrough">
+                <button type="button" onclick="toggleStrikethrough()" class="format-btn" title="Strikethrough">
                     <i class="fas fa-strikethrough"></i>
                 </button>
                 
-                <input type="color" id="fontColor" onchange="formatText('foreColor', this.value)" title="Text Color">
-                <input type="color" id="bgColor" onchange="formatText('hiliteColor', this.value)" title="Background Color">
+                <input type="color" onchange="applyTextColor(this.value)" title="Text Color">
+                <input type="color" onchange="applyHighlightColor(this.value)" title="Highlight Color">
                 
-                <button onclick="formatText('justifyLeft')" class="format-btn" title="Align Left">
+                <button type="button" onclick="applyAlignment('left')" class="format-btn" title="Align Left">
                     <i class="fas fa-align-left"></i>
                 </button>
-                <button onclick="formatText('justifyCenter')" class="format-btn" title="Align Center">
+                <button type="button" onclick="applyAlignment('center')" class="format-btn" title="Align Center">
                     <i class="fas fa-align-center"></i>
                 </button>
-                <button onclick="formatText('justifyRight')" class="format-btn" title="Align Right">
+                <button type="button" onclick="applyAlignment('right')" class="format-btn" title="Align Right">
                     <i class="fas fa-align-right"></i>
                 </button>
-                <button onclick="formatText('justifyFull')" class="format-btn" title="Justify">
+                <button type="button" onclick="applyAlignment('justify')" class="format-btn" title="Justify">
                     <i class="fas fa-align-justify"></i>
                 </button>
                 
-                <button onclick="formatText('insertUnorderedList')" class="format-btn" title="Bullet List">
+                <button type="button" onclick="toggleBulletedList()" class="format-btn" title="Bulleted List">
                     <i class="fas fa-list-ul"></i>
                 </button>
-                <button onclick="formatText('insertOrderedList')" class="format-btn" title="Numbered List">
+                <button type="button" onclick="toggleNumberedList()" class="format-btn" title="Numbered List">
                     <i class="fas fa-list-ol"></i>
                 </button>
                 
-                <button onclick="formatText('outdent')" class="format-btn" title="Decrease Indent">
+                <button type="button" onclick="outdent()" class="format-btn" title="Decrease Indent">
                     <i class="fas fa-outdent"></i>
                 </button>
-                <button onclick="formatText('indent')" class="format-btn" title="Increase Indent">
+                <button type="button" onclick="indent()" class="format-btn" title="Increase Indent">
                     <i class="fas fa-indent"></i>
                 </button>
                 
-                <button onclick="showImageUpload()" class="format-btn" title="Insert Image">
-                    <i class="fas fa-image"></i>
-                </button>
-                <button onclick="createResizableTable()" class="format-btn" title="Insert Table">
-                    <i class="fas fa-table"></i>
-                </button>
-                <button onclick="insertLink()" class="format-btn" title="Insert Link">
+                <button type="button" onclick="insertToolbarLink()" class="format-btn" title="Insert Link">
                     <i class="fas fa-link"></i>
                 </button>
-                
-                <button onclick="formatText('formatBlock', '<h1>')" class="format-btn" title="Heading 1">
-                    H1
+                <button type="button" onclick="insertToolbarImage()" class="format-btn" title="Insert Image">
+                    <i class="fas fa-image"></i>
                 </button>
-                <button onclick="formatText('formatBlock', '<h2>')" class="format-btn" title="Heading 2">
-                    H2
-                </button>
-                <button onclick="formatText('formatBlock', '<h3>')" class="format-btn" title="Heading 3">
-                    H3
-                </button>
-                <button onclick="formatText('formatBlock', '<p>')" class="format-btn" title="Paragraph">
-                    P
+                <button type="button" onclick="insertToolbarTable()" class="format-btn" title="Insert Table">
+                    <i class="fas fa-table"></i>
                 </button>
             </div>
+            
         </header>
 
         <div class="editor-container">
             <div 
                 id="documentEditor" 
-                contenteditable="true" 
                 class="document-editor"
-                oninput="autoSave()"
-                onkeydown="handleKeyDown(event)"
-                onmouseup="updateFormatButtons()"
             >
                 <?php 
                 if (!empty($content)) {
@@ -309,6 +336,12 @@ saveToHistory('document', $filename);
             <div class="word-count" id="wordCount">Words: 0</div>
             <div class="char-count" id="charCount">Characters: 0</div>
             <div class="page-info" id="pageInfo">Page: 1</div>
+            <div class="saving-status" id="savingStatus">Saved</div>
+            <div class="zoom-controls">
+                <span>Zoom</span>
+                <input type="range" id="zoomSlider" min="50" max="150" value="100">
+                <span id="zoomValue">100%</span>
+            </div>
         </div>
     </div>
 
@@ -334,13 +367,13 @@ saveToHistory('document', $filename);
         </div>
     </div>
 
-    <!-- History Modal -->
+    <!-- Version History Modal -->
     <div id="historyModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeHistoryModal()">&times;</span>
-            <h3>Recent Documents</h3>
+            <h3>Version History</h3>
             <div id="historyList" class="history-list">
-                <!-- History items will be loaded here -->
+                <!-- Revisions will be loaded here -->
             </div>
         </div>
     </div>
@@ -351,343 +384,338 @@ saveToHistory('document', $filename);
         // Initialize jsPDF
         window.jsPDF = window.jspdf.jsPDF;
 
-        let autoSaveTimer;
+        let editorInstance = null;
+        let autosaveTimer = null;
         const currentFile = "<?php echo $filename; ?>";
         const isNew = <?php echo $isNew ? 'true' : 'false'; ?>;
-        let selectedImageFile = null;
-        
-        // Initialize editor
-        document.addEventListener('DOMContentLoaded', function() {
-            updateWordCount();
-            updateFormatButtons();
-            setInterval(updateWordCount, 2000);
-            makeExistingTablesResizable();
-        });
-        
-        function updateWordCount() {
-            const text = document.getElementById('documentEditor').innerText || '';
-            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+        function getEditorHtml() {
+            if (editorInstance) {
+                return editorInstance.getData();
+            }
+            const el = document.getElementById('documentEditor');
+            return el ? el.innerHTML : '';
+        }
+
+        function getEditorText() {
+            const temp = document.createElement('div');
+            temp.innerHTML = getEditorHtml();
+            return temp.textContent || temp.innerText || '';
+        }
+
+        function updateStatusFromEditor() {
+            const text = getEditorText();
+            const trimmed = text.trim();
+            const words = trimmed ? trimmed.split(/\s+/).length : 0;
             const chars = text.length;
-            const pages = Math.ceil(chars / 2000); // Rough estimate
-            
+            const pages = Math.max(1, Math.ceil(chars / 2000));
+
             document.getElementById('wordCount').textContent = `Words: ${words}`;
             document.getElementById('charCount').textContent = `Characters: ${chars}`;
             document.getElementById('pageInfo').textContent = `Page: ${pages}`;
         }
-        
-        function autoSave() {
-            clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(saveDocument, 3000);
-            updateWordCount();
-        }
-        
-        function formatText(command, value = null) {
-            document.execCommand(command, false, value);
-            document.getElementById('documentEditor').focus();
-            updateFormatButtons();
-        }
-        
-        function updateFormatButtons() {
-            const editor = document.getElementById('documentEditor');
-            const selection = window.getSelection();
-            
-            if (selection.rangeCount > 0) {
-                const parentElement = selection.getRangeAt(0).commonAncestorContainer.parentElement;
-                
-                // Update button states based on current formatting
-                document.getElementById('boldBtn').classList.toggle('active', 
-                    document.queryCommandState('bold'));
-                document.getElementById('italicBtn').classList.toggle('active', 
-                    document.queryCommandState('italic'));
-                document.getElementById('underlineBtn').classList.toggle('active', 
-                    document.queryCommandState('underline'));
-                
-                // Update font family and size if possible
-                try {
-                    const fontFamily = document.queryCommandValue('fontName');
-                    const fontSize = document.queryCommandValue('fontSize');
-                    
-                    if (fontFamily && document.getElementById('fontFamily').querySelector(`option[value="${fontFamily}"]`)) {
-                        document.getElementById('fontFamily').value = fontFamily;
-                    }
-                    
-                    if (fontSize) {
-                        document.getElementById('fontSize').value = fontSize;
-                    }
-                } catch (e) {
-                    // Ignore errors for font queries
-                }
-            }
-        }
-        
-        // Enhanced Image Upload Functions
-        function showImageUpload() {
-            document.getElementById('imageUploadContainer').style.display = 'flex';
-            resetImageUpload();
-        }
-        
-        function closeImageUpload() {
-            document.getElementById('imageUploadContainer').style.display = 'none';
-            resetImageUpload();
-        }
-        
-        function resetImageUpload() {
-            document.getElementById('imageFile').value = '';
-            document.getElementById('imageUrl').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('urlInputContainer').style.display = 'none';
-            document.getElementById('insertImageBtn').disabled = true;
-            selectedImageFile = null;
-        }
-        
-        function showUrlInput() {
-            document.getElementById('urlInputContainer').style.display = 'block';
-            document.getElementById('insertImageBtn').disabled = false;
-        }
-        
-        function previewImage(input) {
-            const file = input.files[0];
-            if (file) {
-                selectedImageFile = file;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('imagePreview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    document.getElementById('insertImageBtn').disabled = false;
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        function insertImageFromFile() {
-            if (selectedImageFile) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    formatText('insertImage', e.target.result);
-                    closeImageUpload();
-                    showNotification('Image inserted successfully');
-                }
-                reader.readAsDataURL(selectedImageFile);
-            }
-        }
-        
-        function insertImageFromUrl() {
-            const url = document.getElementById('imageUrl').value.trim();
-            if (url) {
-                // Validate URL
-                if (!isValidUrl(url)) {
-                    showNotification('Please enter a valid image URL', 'error');
-                    return;
-                }
-                
-                // Create image to check if it loads
-                const img = new Image();
-                img.onload = function() {
-                    formatText('insertImage', url);
-                    closeImageUpload();
-                    showNotification('Image inserted successfully');
-                };
-                img.onerror = function() {
-                    showNotification('Could not load image from URL', 'error');
-                };
-                img.src = url;
+
+        function setSavingState(state) {
+            const el = document.getElementById('savingStatus');
+            if (!el) return;
+            if (state === 'saving') {
+                el.textContent = 'Saving...';
+            } else if (state === 'error') {
+                el.textContent = 'Error';
             } else {
-                showNotification('Please enter an image URL', 'error');
+                el.textContent = 'Saved';
             }
         }
-        
-        function isValidUrl(string) {
-            try {
-                new URL(string);
-                return true;
-            } catch (_) {
-                return false;
-            }
+
+        function scheduleAutosave() {
+            if (!editorInstance) return;
+            clearTimeout(autosaveTimer);
+            setSavingState('saving');
+            autosaveTimer = setTimeout(function() {
+                saveDocument(true);
+            }, 1500);
         }
-        
-        // Resizable Table Functions
-        function createResizableTable() {
-            const rows = parseInt(prompt('Enter number of rows:', '3')) || 3;
-            const cols = parseInt(prompt('Enter number of columns:', '3')) || 3;
-            
-            const tableId = 'table_' + Date.now();
-            
-            let tableHTML = `
-                <div class="resizable-table" id="${tableId}">
-                    <table style="border-collapse: collapse; width: 100%; margin: 1rem 0;">
-                        <tbody>`;
-            
-            for (let i = 0; i < rows; i++) {
-                tableHTML += '<tr>';
-                for (let j = 0; j < cols; j++) {
-                    tableHTML += `<td style="border: 1px solid #ddd; padding: 8px; min-width: 50px;">&nbsp;</td>`;
-                }
-                tableHTML += '</tr>';
-            }
-            
-            tableHTML += `
-                        </tbody>
-                    </table>
-                    <div class="resize-handle right" onmousedown="startResize(event, '${tableId}', 'horizontal')"></div>
-                    <div class="resize-handle bottom" onmousedown="startResize(event, '${tableId}', 'vertical')"></div>
-                    <div class="resize-handle corner" onmousedown="startResize(event, '${tableId}', 'both')"></div>
-                </div>`;
-            
-            formatText('insertHTML', tableHTML);
-            makeTableResizable(tableId);
+
+        function initializeEditor() {
+            CKEDITOR.ClassicEditor
+                .create(document.querySelector('#documentEditor'), {
+                    toolbar: [
+                        'heading',
+                        '|',
+                        'bold',
+                        'italic',
+                        'underline',
+                        'strikethrough',
+                        '|',
+                        'fontColor',
+                        'fontBackgroundColor',
+                        '|',
+                        'bulletedList',
+                        'numberedList',
+                        'outdent',
+                        'indent',
+                        '|',
+                        'alignment',
+                        '|',
+                        'insertTable',
+                        'link',
+                        'imageUpload',
+                        '|',
+                        'undo',
+                        'redo'
+                    ],
+                    table: {
+                        contentToolbar: [
+                            'tableColumn',
+                            'tableRow',
+                            'mergeTableCells',
+                            'splitTableCellVertically',
+                            'splitTableCellHorizontally',
+                            'tableProperties',
+                            'tableCellProperties'
+                        ]
+                    },
+                    image: {
+                        toolbar: [
+                            'imageStyle:alignLeft',
+                            'imageStyle:full',
+                            'imageStyle:alignRight',
+                            '|',
+                            'imageTextAlternative',
+                            'toggleImageCaption',
+                            'imageResize'
+                        ]
+                    },
+                    simpleUpload: {
+                        uploadUrl: 'upload_image.php'
+                    }
+                })
+                .then(function(editor) {
+                    editorInstance = editor;
+
+                    editor.model.document.on('change:data', function() {
+                        updateStatusFromEditor();
+                        scheduleAutosave();
+                    });
+
+                    updateStatusFromEditor();
+                })
+                .catch(function(error) {
+                    console.error(error);
+                });
         }
-        
-        function makeExistingTablesResizable() {
-            setTimeout(() => {
-                const tables = document.querySelectorAll('#documentEditor table');
-                tables.forEach((table, index) => {
-                    if (!table.parentElement.classList.contains('resizable-table')) {
-                        const tableId = 'table_' + Date.now() + '_' + index;
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'resizable-table';
-                        wrapper.id = tableId;
-                        
-                        table.parentNode.insertBefore(wrapper, table);
-                        wrapper.appendChild(table);
-                        
-                        // Add resize handles
-                        const rightHandle = document.createElement('div');
-                        rightHandle.className = 'resize-handle right';
-                        rightHandle.setAttribute('onmousedown', `startResize(event, '${tableId}', 'horizontal')`);
-                        
-                        const bottomHandle = document.createElement('div');
-                        bottomHandle.className = 'resize-handle bottom';
-                        bottomHandle.setAttribute('onmousedown', `startResize(event, '${tableId}', 'vertical')`);
-                        
-                        const cornerHandle = document.createElement('div');
-                        cornerHandle.className = 'resize-handle corner';
-                        cornerHandle.setAttribute('onmousedown', `startResize(event, '${tableId}', 'both')`);
-                        
-                        wrapper.appendChild(rightHandle);
-                        wrapper.appendChild(bottomHandle);
-                        wrapper.appendChild(cornerHandle);
-                        
-                        makeTableResizable(tableId);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+            setInterval(updateStatusFromEditor, 3000);
+
+            const zoomSlider = document.getElementById('zoomSlider');
+            if (zoomSlider) {
+                zoomSlider.addEventListener('input', function() {
+                    const value = parseInt(this.value, 10) || 100;
+                    const factor = value / 100;
+                    document.documentElement.style.setProperty('--editor-zoom', factor);
+                    const label = document.getElementById('zoomValue');
+                    if (label) {
+                        label.textContent = value + '%';
                     }
                 });
-            }, 100);
-        }
-        
-        function makeTableResizable(tableId) {
-            const tableWrapper = document.getElementById(tableId);
-            if (!tableWrapper) return;
-            
-            tableWrapper.addEventListener('mouseenter', function() {
-                this.querySelectorAll('.resize-handle').forEach(handle => {
-                    handle.style.opacity = '0.7';
-                });
+            }
+
+            document.addEventListener('keydown', function(event) {
+                if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+                    event.preventDefault();
+                    saveDocument(false);
+                }
             });
-            
-            tableWrapper.addEventListener('mouseleave', function() {
-                this.querySelectorAll('.resize-handle').forEach(handle => {
-                    handle.style.opacity = '0';
-                });
-            });
-        }
-        
-        let isResizing = false;
-        let resizeDirection = '';
-        let currentTable = null;
-        let startX, startY, startWidth, startHeight;
-        
-        function startResize(e, tableId, direction) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            isResizing = true;
-            resizeDirection = direction;
-            currentTable = document.getElementById(tableId);
-            const table = currentTable.querySelector('table');
-            
-            startX = e.clientX;
-            startY = e.clientY;
-            startWidth = parseInt(document.defaultView.getComputedStyle(table).width, 10);
-            startHeight = parseInt(document.defaultView.getComputedStyle(table).height, 10);
-            
-            document.addEventListener('mousemove', handleResize);
-            document.addEventListener('mouseup', stopResize);
-        }
-        
-        function handleResize(e) {
-            if (!isResizing || !currentTable) return;
-            
-            const table = currentTable.querySelector('table');
-            
-            if (resizeDirection === 'horizontal' || resizeDirection === 'both') {
-                const width = startWidth + (e.clientX - startX);
-                table.style.width = Math.max(100, width) + 'px';
-            }
-            
-            if (resizeDirection === 'vertical' || resizeDirection === 'both') {
-                const height = startHeight + (e.clientY - startY);
-                table.style.height = Math.max(50, height) + 'px';
+        });
+
+        function focusEditor() {
+            if (editorInstance) {
+                editorInstance.editing.view.focus();
             }
         }
-        
-        function stopResize() {
-            isResizing = false;
-            resizeDirection = '';
-            currentTable = null;
-            
-            document.removeEventListener('mousemove', handleResize);
-            document.removeEventListener('mouseup', stopResize);
+
+        function applyHeading(value) {
+            if (!editorInstance || !value) return;
+            editorInstance.execute('heading', { value: value });
+            focusEditor();
         }
-        
-        function insertLink() {
-            const url = prompt('Enter URL:');
-            if (url) {
-                formatText('createLink', url);
-            }
+
+        function applyFontFamily(value) {
+            if (!editorInstance || !value) return;
+            editorInstance.execute('fontFamily', { value: value });
+            focusEditor();
         }
-        
-        function handleKeyDown(event) {
-            // Ctrl+B for Bold
-            if (event.ctrlKey && event.key === 'b') {
-                event.preventDefault();
-                formatText('bold');
-            }
-            // Ctrl+I for Italic
-            else if (event.ctrlKey && event.key === 'i') {
-                event.preventDefault();
-                formatText('italic');
-            }
-            // Ctrl+U for Underline
-            else if (event.ctrlKey && event.key === 'u') {
-                event.preventDefault();
-                formatText('underline');
-            }
-            // Ctrl+S for Save
-            else if (event.ctrlKey && event.key === 's') {
-                event.preventDefault();
-                saveDocument();
-            }
+
+        function applyFontSize(value) {
+            if (!editorInstance || !value) return;
+            editorInstance.execute('fontSize', { value: value });
+            focusEditor();
         }
-        
+
+        function toggleBold() {
+            if (!editorInstance) return;
+            editorInstance.execute('bold');
+            focusEditor();
+        }
+
+        function toggleItalic() {
+            if (!editorInstance) return;
+            editorInstance.execute('italic');
+            focusEditor();
+        }
+
+        function toggleUnderline() {
+            if (!editorInstance) return;
+            editorInstance.execute('underline');
+            focusEditor();
+        }
+
+        function toggleStrikethrough() {
+            if (!editorInstance) return;
+            editorInstance.execute('strikethrough');
+            focusEditor();
+        }
+
+        function applyTextColor(color) {
+            if (!editorInstance || !color) return;
+            editorInstance.execute('fontColor', { value: color });
+            focusEditor();
+        }
+
+        function applyHighlightColor(color) {
+            if (!editorInstance || !color) return;
+            editorInstance.execute('fontBackgroundColor', { value: color });
+            focusEditor();
+        }
+
+        function applyAlignment(align) {
+            if (!editorInstance) return;
+            editorInstance.execute('alignment', { value: align });
+            focusEditor();
+        }
+
+        function toggleBulletedList() {
+            if (!editorInstance) return;
+            editorInstance.execute('bulletedList');
+            focusEditor();
+        }
+
+        function toggleNumberedList() {
+            if (!editorInstance) return;
+            editorInstance.execute('numberedList');
+            focusEditor();
+        }
+
+        function indent() {
+            if (!editorInstance) return;
+            editorInstance.execute('indent');
+            focusEditor();
+        }
+
+        function outdent() {
+            if (!editorInstance) return;
+            editorInstance.execute('outdent');
+            focusEditor();
+        }
+
+        function insertToolbarLink() {
+            if (!editorInstance) return;
+            var url = prompt('Enter URL:', 'https://');
+            if (!url) return;
+            editorInstance.execute('link', { href: url });
+            focusEditor();
+        }
+
+        function insertToolbarImage() {
+            if (!editorInstance) return;
+            editorInstance.execute('imageUpload');
+            focusEditor();
+        }
+
+        function insertToolbarTable() {
+            if (!editorInstance) return;
+            editorInstance.execute('insertTable');
+            focusEditor();
+        }
+
         function showDownloadModal() {
             document.getElementById('downloadModal').style.display = 'block';
         }
-        
+
         function closeDownloadModal() {
             document.getElementById('downloadModal').style.display = 'none';
         }
-        
-        function showHistory() {
-            loadHistory('document');
-            document.getElementById('historyModal').style.display = 'block';
+
+        function showVersionHistory() {
+            const filename = document.getElementById('filename').value || currentFile;
+            if (!filename) {
+                showNotification('Please enter a filename first', 'error');
+                return;
+            }
+
+            fetch('document_revisions.php?filename=' + encodeURIComponent(filename))
+                .then(function(response) { return response.json(); })
+                .then(function(revisions) {
+                    const list = document.getElementById('historyList');
+                    list.innerHTML = '';
+
+                    if (!Array.isArray(revisions) || revisions.length === 0) {
+                        list.innerHTML = '<div class="no-files">No revisions yet</div>';
+                    } else {
+                        revisions.forEach(function(rev) {
+                            const item = document.createElement('div');
+                            item.className = 'history-item';
+                            const date = new Date(rev.created_at);
+                            item.innerHTML = '<div class="file-name">' +
+                                date.toLocaleString() +
+                                '</div><div class="file-meta">Revision #' + rev.id +
+                                '</div>';
+                            item.onclick = function() {
+                                restoreRevision(rev.id);
+                            };
+                            list.appendChild(item);
+                        });
+                    }
+
+                    document.getElementById('historyModal').style.display = 'block';
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    showNotification('Error loading version history', 'error');
+                });
         }
-        
+
         function closeHistoryModal() {
             document.getElementById('historyModal').style.display = 'none';
         }
+
+        function restoreRevision(id) {
+            if (!editorInstance) {
+                return;
+            }
+
+            fetch('document_revisions.php?id=' + encodeURIComponent(id))
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (!data || !data.content) {
+                        showNotification('Could not load revision', 'error');
+                        return;
+                    }
+                    const html = data.content.html || '';
+                    editorInstance.setData(html);
+                    closeHistoryModal();
+                    showNotification('Revision loaded into editor (remember to save)');
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    showNotification('Error restoring revision', 'error');
+                });
+        }
         
         function printDocument() {
-            const content = document.getElementById('documentEditor').innerHTML;
+            const content = getEditorHtml();
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <html>
@@ -726,15 +754,20 @@ saveToHistory('document', $filename);
                 
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                const editor = document.getElementById('documentEditor');
-                
-                // Use html2canvas to capture the content
-                const canvas = await html2canvas(editor, {
+                const temp = document.createElement('div');
+                temp.style.position = 'absolute';
+                temp.style.left = '-9999px';
+                temp.innerHTML = getEditorHtml();
+                document.body.appendChild(temp);
+
+                const canvas = await html2canvas(temp, {
                     scale: 2,
                     useCORS: true,
                     logging: false
                 });
-                
+
+                document.body.removeChild(temp);
+
                 const imgData = canvas.toDataURL('image/png');
                 const imgWidth = doc.internal.pageSize.getWidth();
                 const pageHeight = doc.internal.pageSize.getHeight();
@@ -764,7 +797,7 @@ saveToHistory('document', $filename);
                 showNotification('Error generating PDF. Using print method instead.', 'error');
                 
                 // Fallback to print method
-                const content = document.getElementById('documentEditor').innerHTML;
+                const content = getEditorHtml();
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write(`
                     <html>
@@ -787,7 +820,7 @@ saveToHistory('document', $filename);
         }
         
         function exportToDOC() {
-            const content = document.getElementById('documentEditor').innerHTML;
+            const content = getEditorHtml();
             const filename = (document.getElementById('filename').value || 'document').replace(/\.[^/.]+$/, "") + '.doc';
             
             const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
@@ -812,7 +845,7 @@ saveToHistory('document', $filename);
         }
         
         function exportToTXT() {
-            const content = document.getElementById('documentEditor').innerText;
+            const content = getEditorText();
             const filename = (document.getElementById('filename').value || 'document').replace(/\.[^/.]+$/, "") + '.txt';
             downloadFile(content, filename, 'text/plain');
             showNotification('Document downloaded as text file');
@@ -820,7 +853,7 @@ saveToHistory('document', $filename);
         }
         
         function exportToHTML() {
-            const content = document.getElementById('documentEditor').innerHTML;
+            const content = getEditorHtml();
             const filename = (document.getElementById('filename').value || 'document').replace(/\.[^/.]+$/, "") + '.html';
             
             const fullHTML = `<!DOCTYPE html>
@@ -858,16 +891,20 @@ saveToHistory('document', $filename);
         }
         
         // Save functionality
-        function saveDocument() {
+        function saveDocument(isAutosave = false) {
             const filename = document.getElementById('filename').value || 'untitled_document';
-            const content = document.getElementById('documentEditor').innerHTML;
+            const html = getEditorHtml();
+            const payload = { html: html };
+            const contentJson = JSON.stringify(payload);
             
             const formData = new FormData();
             formData.append('type', 'document');
             formData.append('filename', filename);
-            formData.append('content', content);
+            formData.append('content_html', html);
+            formData.append('content_json', contentJson);
             formData.append('isNew', isNew);
             formData.append('oldFilename', currentFile);
+            formData.append('autosave', isAutosave ? 'true' : 'false');
             
             fetch('save.php', {
                 method: 'POST',
@@ -876,70 +913,23 @@ saveToHistory('document', $filename);
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification('Document saved successfully!');
+                    if (!isAutosave) {
+                        showNotification('Document saved successfully!');
+                    }
+                    setSavingState('saved');
                     if (isNew) {
                         window.history.replaceState({}, '', `document.php?file=${encodeURIComponent(filename)}`);
                     }
                 } else {
                     showNotification('Error saving document: ' + data.message, 'error');
+                    setSavingState('error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 showNotification('Error saving document', 'error');
+                setSavingState('error');
             });
-        }
-        
-        // History functionality
-        function loadHistory(type) {
-            fetch(`history.php?type=${type}`)
-                .then(response => response.json())
-                .then(files => {
-                    const historyList = document.getElementById('historyList');
-                    historyList.innerHTML = '';
-                    
-                    if (files.length === 0) {
-                        historyList.innerHTML = '<div class="no-files">No recent files</div>';
-                        return;
-                    }
-                    
-                    files.forEach(file => {
-                        const historyItem = document.createElement('div');
-                        historyItem.className = 'history-item';
-                        historyItem.onclick = () => {
-                            window.location.href = `${type}.php?file=${encodeURIComponent(file.filename)}`;
-                        };
-                        historyItem.innerHTML = `
-                            <div class="file-name">${file.filename}</div>
-                            <div class="file-meta">${file.date} - ${file.type}</div>
-                        `;
-                        historyList.appendChild(historyItem);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading history:', error);
-                    document.getElementById('historyList').innerHTML = '<div class="no-files">Error loading history</div>';
-                });
-        }
-        
-        // Notification function
-        function showNotification(message, type = 'success') {
-            // Remove existing notifications
-            document.querySelectorAll('.notification').forEach(notification => {
-                notification.remove();
-            });
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 4000);
         }
     </script>
 </body>

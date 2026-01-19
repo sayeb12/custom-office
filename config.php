@@ -50,6 +50,15 @@ class Database {
             INDEX idx_type (type),
             INDEX idx_timestamp (timestamp)
         )");
+
+        // Document revisions table for version history
+        $this->conn->exec("CREATE TABLE IF NOT EXISTS document_revisions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            filename VARCHAR(255) NOT NULL,
+            content_json LONGTEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_filename_created_at (filename, created_at)
+        )");
     }
 }
 
