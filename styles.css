@@ -15,6 +15,7 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    width: 100%;
 }
 
 /* Header & Navigation */
@@ -273,6 +274,7 @@ header h1 {
     font-size: 14px;
     max-width: 1000px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .document-editor:focus {
@@ -316,6 +318,7 @@ header h1 {
     background: white;
     border-radius: 0 0 12px 12px;
     position: relative;
+    width: 100%;
 }
 
 .spreadsheet-container {
@@ -582,6 +585,7 @@ header h1 {
 @media (max-width: 768px) {
     .container {
         padding: 10px;
+        width: 100%;
     }
     
     .toolbar {
@@ -605,16 +609,23 @@ header h1 {
     .format-toolbar,
     .spreadsheet-toolbar {
         justify-content: center;
+        width: 100%;
     }
     
     .spreadsheet-cell {
-        min-width: 80px;
-        width: 80px;
+        min-width: 70px;
+        width: 70px;
     }
     
     .header-cell {
-        min-width: 80px;
-        width: 80px;
+        min-width: 70px;
+        width: 70px;
+    }
+
+    .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
     }
 }
 

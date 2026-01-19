@@ -48,18 +48,20 @@ saveToHistory('spreadsheet', $filename);
             padding: 5px 15px;
             background: #f8f9fa;
             border-bottom: 1px solid #dee2e6;
+            flex-wrap: wrap;
         }
         
         .formula-input {
-            flex: 1;
+            flex: 1 1 200px;
             padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-family: monospace;
+            min-width: 0;
         }
         
         .cell-reference {
-            min-width: 80px;
+            min-width: 60px;
             padding: 8px;
             background: white;
             border: 1px solid #ddd;
