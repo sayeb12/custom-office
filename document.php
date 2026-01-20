@@ -337,18 +337,21 @@ saveToHistory('document', $filename);
         </header>
 
         <div class="editor-container">
-            <div 
-                id="documentEditor" 
-                class="document-editor"
-                contenteditable="true"
-            >
-                <?php 
-                if (!empty($content)) {
-                    echo htmlspecialchars_decode($content);
-                } else {
-                    echo '<h1>Document Title</h1><p>Start typing your document here...</p>';
-                }
-                ?>
+            <div class="editor-page-wrapper">
+                <div class="editor-page-overlay" id="pageOverlay"></div>
+                <div 
+                    id="documentEditor" 
+                    class="document-editor"
+                    contenteditable="true"
+                >
+                    <?php 
+                    if (!empty($content)) {
+                        echo htmlspecialchars_decode($content);
+                    } else {
+                        echo '<h1>Document Title</h1><p>Start typing your document here...</p>';
+                    }
+                    ?>
+                </div>
             </div>
         </div>
         
@@ -505,12 +508,41 @@ saveToHistory('document', $filename);
             return temp.textContent || temp.innerText || '';
         }
 
+        // Draw visual page-break lines at approximate A4 heights.
+        function updatePageBreaks() {
+            const editable = document.querySelector('.ck-editor__editable_inline') || document.getElementById('documentEditor');
+            const overlay = document.getElementById('pageOverlay');
+            if (!editable || !overlay) {
+                return 1;
+            }
+
+            overlay.innerHTML = '';
+
+            // Use A4 aspect ratio (210mm x 297mm) so that
+            // the page-break position in the editor matches
+            // the printed/PDF output more closely.
+            const editorWidth = editable.clientWidth || 800;
+            const basePageHeight = editorWidth * (297 / 210);
+
+            const totalHeight = editable.scrollHeight;
+            const fullPages = Math.floor(totalHeight / basePageHeight);
+
+            for (let i = 1; i <= fullPages; i++) {
+                const line = document.createElement('div');
+                line.className = 'editor-page-break';
+                line.style.top = (i * basePageHeight) + 'px';
+                overlay.appendChild(line);
+            }
+
+            return Math.max(1, fullPages + 1);
+        }
+
         function updateStatusFromEditor() {
             const text = getEditorText();
             const trimmed = text.trim();
             const words = trimmed ? trimmed.split(/\s+/).length : 0;
             const chars = text.length;
-            const pages = Math.max(1, Math.ceil(chars / 2000));
+            const pages = updatePageBreaks();
 
             document.getElementById('wordCount').textContent = `Words: ${words}`;
             document.getElementById('charCount').textContent = `Characters: ${chars}`;
@@ -680,6 +712,7 @@ saveToHistory('document', $filename);
                     });
 
                     updateStatusFromEditor();
+                    updatePageBreaks();
                 })
                 .catch(function(error) {
                     console.error(error);
@@ -841,6 +874,8 @@ saveToHistory('document', $filename);
                     if (label) {
                         label.textContent = value + '%';
                     }
+                    updateStatusFromEditor();
+                    updatePageBreaks();
                 });
             }
 
