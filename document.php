@@ -321,6 +321,7 @@ saveToHistory('document', $filename);
             <div 
                 id="documentEditor" 
                 class="document-editor"
+                contenteditable="true"
             >
                 <?php 
                 if (!empty($content)) {
