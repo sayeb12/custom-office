@@ -465,6 +465,9 @@ saveToHistory('document', $filename);
                         'undo',
                         'redo'
                     ],
+                    alignment: {
+                        options: [ 'left', 'center', 'right', 'justify' ]
+                    },
                     table: {
                         contentToolbar: [
                             'tableColumn',
@@ -531,114 +534,206 @@ saveToHistory('document', $filename);
             });
         });
 
-        function focusEditor() {
+        function applyHeading(value) {
+            if (!value) return;
+            
             if (editorInstance) {
+                editorInstance.execute('heading', { value: value });
                 editorInstance.editing.view.focus();
+            } else {
+                const blockMap = {
+                    paragraph: '<p>',
+                    heading1: '<h1>',
+                    heading2: '<h2>',
+                    heading3: '<h3>'
+                };
+                const block = blockMap[value] || '<p>';
+                document.execCommand('formatBlock', false, block);
             }
         }
 
-        function applyHeading(value) {
-            if (!editorInstance || !value) return;
-            editorInstance.execute('heading', { value: value });
-            focusEditor();
-        }
-
         function applyFontFamily(value) {
-            if (!editorInstance || !value) return;
-            editorInstance.execute('fontFamily', { value: value });
-            focusEditor();
+            if (!value) return;
+            
+            if (editorInstance) {
+                editorInstance.execute('fontFamily', { value: value });
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('fontName', false, value);
+            }
         }
 
         function applyFontSize(value) {
-            if (!editorInstance || !value) return;
-            editorInstance.execute('fontSize', { value: value });
-            focusEditor();
+            if (!value) return;
+            
+            if (editorInstance) {
+                editorInstance.execute('fontSize', { value: value });
+                editorInstance.editing.view.focus();
+            } else {
+                const sizeMap = {
+                    '10px': '2',
+                    '11px': '2',
+                    '12px': '3',
+                    '14px': '4',
+                    '18px': '5',
+                    '24px': '6'
+                };
+                const legacySize = sizeMap[value] || '3';
+                document.execCommand('fontSize', false, legacySize);
+            }
         }
 
         function toggleBold() {
-            if (!editorInstance) return;
-            editorInstance.execute('bold');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('bold');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('bold', false, null);
+            }
         }
 
         function toggleItalic() {
-            if (!editorInstance) return;
-            editorInstance.execute('italic');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('italic');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('italic', false, null);
+            }
         }
 
         function toggleUnderline() {
-            if (!editorInstance) return;
-            editorInstance.execute('underline');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('underline');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('underline', false, null);
+            }
         }
 
         function toggleStrikethrough() {
-            if (!editorInstance) return;
-            editorInstance.execute('strikethrough');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('strikethrough');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('strikeThrough', false, null);
+            }
         }
 
         function applyTextColor(color) {
-            if (!editorInstance || !color) return;
-            editorInstance.execute('fontColor', { value: color });
-            focusEditor();
+            if (!color) return;
+            
+            if (editorInstance) {
+                editorInstance.execute('fontColor', { value: color });
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('foreColor', false, color);
+            }
         }
 
         function applyHighlightColor(color) {
-            if (!editorInstance || !color) return;
-            editorInstance.execute('fontBackgroundColor', { value: color });
-            focusEditor();
+            if (!color) return;
+            
+            if (editorInstance) {
+                editorInstance.execute('fontBackgroundColor', { value: color });
+                editorInstance.editing.view.focus();
+            } else {
+                if (!document.execCommand('hiliteColor', false, color)) {
+                    document.execCommand('backColor', false, color);
+                }
+            }
         }
 
         function applyAlignment(align) {
-            if (!editorInstance) return;
-            editorInstance.execute('alignment', { value: align });
-            focusEditor();
+            const alignMap = {
+                left: 'justifyLeft',
+                center: 'justifyCenter',
+                right: 'justifyRight',
+                justify: 'justifyFull'
+            };
+
+            if (editorInstance) {
+                editorInstance.execute('alignment', { value: align });
+                editorInstance.editing.view.focus();
+            } else if (alignMap[align]) {
+                document.execCommand(alignMap[align], false, null);
+            }
         }
 
         function toggleBulletedList() {
-            if (!editorInstance) return;
-            editorInstance.execute('bulletedList');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('bulletedList');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('insertUnorderedList', false, null);
+            }
         }
 
         function toggleNumberedList() {
-            if (!editorInstance) return;
-            editorInstance.execute('numberedList');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('numberedList');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('insertOrderedList', false, null);
+            }
         }
 
         function indent() {
-            if (!editorInstance) return;
-            editorInstance.execute('indent');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('indent');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('indent', false, null);
+            }
         }
 
         function outdent() {
-            if (!editorInstance) return;
-            editorInstance.execute('outdent');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('outdent');
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('outdent', false, null);
+            }
         }
 
         function insertToolbarLink() {
-            if (!editorInstance) return;
             var url = prompt('Enter URL:', 'https://');
             if (!url) return;
-            editorInstance.execute('link', { href: url });
-            focusEditor();
+
+            if (editorInstance) {
+                editorInstance.execute('link', { href: url });
+                editorInstance.editing.view.focus();
+            } else {
+                document.execCommand('createLink', false, url);
+            }
         }
 
         function insertToolbarImage() {
-            if (!editorInstance) return;
-            editorInstance.execute('imageUpload');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('imageUpload');
+                editorInstance.editing.view.focus();
+            } else {
+                document.getElementById('imageUploadContainer').style.display = 'flex';
+            }
         }
 
         function insertToolbarTable() {
-            if (!editorInstance) return;
-            editorInstance.execute('insertTable');
-            focusEditor();
+            if (editorInstance) {
+                editorInstance.execute('insertTable');
+                editorInstance.editing.view.focus();
+            } else {
+                const rows = 3;
+                const cols = 3;
+                let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
+                for (let r = 0; r < rows; r++) {
+                    html += '<tr>';
+                    for (let c = 0; c < cols; c++) {
+                        html += '<td style="padding: 8px;">&nbsp;</td>';
+                    }
+                    html += '</tr>';
+                }
+                html += '</table>';
+                document.execCommand('insertHTML', false, html);
+            }
         }
 
         function showDownloadModal() {
