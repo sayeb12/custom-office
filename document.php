@@ -273,9 +273,22 @@ saveToHistory('document', $filename);
                 <button type="button" onclick="toggleStrikethrough()" class="format-btn" title="Strikethrough">
                     <i class="fas fa-strikethrough"></i>
                 </button>
-                
-                <input type="color" onchange="applyTextColor(this.value)" title="Text Color">
-                <input type="color" onchange="applyHighlightColor(this.value)" title="Highlight Color">
+
+                <!-- Text color picker (custom palette + native picker) -->
+                <div class="color-picker-wrapper" id="textColorPicker">
+                    <button type="button" class="format-btn color-picker-trigger" title="Text color">
+                        <i class="fas fa-font"></i>
+                    </button>
+                    <div class="color-palette" id="textColorPalette"></div>
+                </div>
+
+                <!-- Highlight color picker (custom palette + native picker) -->
+                <div class="color-picker-wrapper" id="highlightColorPicker">
+                    <button type="button" class="format-btn color-picker-trigger" title="Highlight color">
+                        <i class="fas fa-highlighter"></i>
+                    </button>
+                    <div class="color-palette" id="highlightColorPalette"></div>
+                </div>
                 
                 <button type="button" onclick="applyAlignment('left')" class="format-btn" title="Align Left">
                     <i class="fas fa-align-left"></i>
@@ -312,6 +325,12 @@ saveToHistory('document', $filename);
                 </button>
                 <button type="button" onclick="insertToolbarTable()" class="format-btn" title="Insert Table">
                     <i class="fas fa-table"></i>
+                </button>
+                <button type="button" onclick="deleteSelectedImage()" class="format-btn" title="Delete Selected Image">
+                    <i class="fas fa-trash-can"></i> Img
+                </button>
+                <button type="button" onclick="deleteSelectedTable()" class="format-btn" title="Delete Selected Table">
+                    <i class="fas fa-trash-can"></i> Tbl
                 </button>
             </div>
             
@@ -387,8 +406,33 @@ saveToHistory('document', $filename);
 
         let editorInstance = null;
         let autosaveTimer = null;
+        let lastEditorSelection = null;
+        let activeColorPalette = null;
+        let lastNativeRange = null;
         const currentFile = "<?php echo $filename; ?>";
         const isNew = <?php echo $isNew ? 'true' : 'false'; ?>;
+
+        // Swatch colors used for the custom text / highlight pickers.
+        // Roughly matches the Google Docs palettes.
+        const TEXT_COLOR_SWATCHES = [
+            '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef',
+            '#f3f3f3', '#ffffff', '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff',
+            '#4a86e8', '#0000ff', '#9900ff', '#ff00ff', '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc',
+            '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc', '#dd7e6b', '#ea9999',
+            '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+            '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc',
+            '#8e7cc3', '#c27ba0', '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e',
+            '#3c78d8', '#3d85c6', '#674ea7', '#a64d79', '#85200c', '#990000', '#b45f06', '#bf9000',
+            '#38761d', '#134f5c', '#1155cc', '#0b5394', '#351c75', '#741b47'
+        ];
+
+        const HIGHLIGHT_COLOR_SWATCHES = [
+            '#ffffff', '#fff2cc', '#ffd966', '#ffe599', '#fff2cc', '#f4cccc', '#fce5cd', '#ead1dc',
+            '#d9ead3', '#d0e0e3', '#cfe2f3', '#d9d2e9', '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc',
+            '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc', '#fce5cd', '#fff2cc',
+            '#ffe599', '#ffd966', '#f6b26b', '#f9cb9c', '#f4cccc', '#ead1dc', '#d9d2e9', '#cfe2f3',
+            '#d0e0e3', '#d9ead3'
+        ];
 
         function getEditorHtml() {
             if (editorInstance) {
@@ -429,7 +473,6 @@ saveToHistory('document', $filename);
         }
 
         function scheduleAutosave() {
-            if (!editorInstance) return;
             clearTimeout(autosaveTimer);
             setSavingState('saving');
             autosaveTimer = setTimeout(function() {
@@ -437,36 +480,73 @@ saveToHistory('document', $filename);
             }, 1500);
         }
 
+        function restoreEditorSelection() {
+            if (!editorInstance || !lastEditorSelection || !lastEditorSelection.length) {
+                return;
+            }
+
+            editorInstance.model.change(function(writer) {
+                writer.setSelection(lastEditorSelection);
+            });
+        }
+
         function initializeEditor() {
-            CKEDITOR.ClassicEditor
-                .create(document.querySelector('#documentEditor'), {
-                    toolbar: [
-                        'heading',
-                        '|',
-                        'bold',
-                        'italic',
-                        'underline',
-                        'strikethrough',
-                        '|',
-                        'fontColor',
-                        'fontBackgroundColor',
-                        '|',
-                        'bulletedList',
-                        'numberedList',
-                        'outdent',
-                        'indent',
-                        '|',
-                        'alignment',
-                        '|',
-                        'insertTable',
-                        'link',
-                        'imageUpload',
-                        '|',
-                        'undo',
-                        'redo'
-                    ],
+            const el = document.getElementById('documentEditor');
+
+            // If CKEditor 5 super-build is available, use it with only free plugins.
+            if (el && window.CKEDITOR && CKEDITOR.ClassicEditor) {
+                const Editor = CKEDITOR.ClassicEditor;
+
+                // Strip premium / cloud plugins from builtinPlugins before create().
+                if (Array.isArray(Editor.builtinPlugins)) {
+                    const blocked = new Set([
+                        'CloudServices',
+                        'ExportPdf',
+                        'ExportWord',
+                        'CKBox',
+                        'CKBoxImageEdit',
+                        'CKBoxUtils',
+                        'RealTimeCollaborativeComments',
+                        'RealTimeCollaborativeTrackChanges',
+                        'RealTimeCollaborativeRevisionHistory',
+                        'PresenceList',
+                        'Comments',
+                        'TrackChanges',
+                        'TrackChangesData',
+                        'RevisionHistory',
+                        'Pagination',
+                        'WProofreader',
+                        'MathType',
+                        'SlashCommand',
+                        'Template',
+                        'DocumentOutline',
+                        'FormatPainter',
+                        'TableOfContents',
+                        'PasteFromOfficeEnhanced',
+                        'CaseChange',
+                        'AIAdapter',
+                        'AIAssistant',
+                        'AICommands'
+                    ]);
+
+                    Editor.builtinPlugins = Editor.builtinPlugins.filter(function(Plugin) {
+                        const name = Plugin.pluginName || Plugin.name || '';
+                        return !blocked.has(name);
+                    });
+                }
+
+                Editor.create(el, {
+                    // Use only the custom header; hide the built-in main toolbar.
+                    toolbar: [],
                     alignment: {
                         options: [ 'left', 'center', 'right', 'justify' ]
+                    },
+                    fontSize: {
+                        options: [ '10px', '11px', '12px', '14px', '18px', '24px' ],
+                        supportAllValues: true
+                    },
+                    fontFamily: {
+                        supportAllValues: true
                     },
                     table: {
                         contentToolbar: [
@@ -481,9 +561,9 @@ saveToHistory('document', $filename);
                     },
                     image: {
                         toolbar: [
-                            'imageStyle:alignLeft',
-                            'imageStyle:full',
-                            'imageStyle:alignRight',
+                            'imageStyle:inline',
+                            'imageStyle:block',
+                            'imageStyle:side',
                             '|',
                             'imageTextAlternative',
                             'toggleImageCaption',
@@ -492,11 +572,51 @@ saveToHistory('document', $filename);
                     },
                     simpleUpload: {
                         uploadUrl: 'upload_image.php'
-                    }
+                    },
+                    removePlugins: [
+                        'EasyImage',
+                        'CloudServices',
+                        'ExportPdf',
+                        'ExportWord',
+                        'CKBox',
+                        'CKBoxImageEdit',
+                        'CKBoxUtils',
+                        'RealTimeCollaborativeComments',
+                        'RealTimeCollaborativeTrackChanges',
+                        'RealTimeCollaborativeRevisionHistory',
+                        'PresenceList',
+                        'Comments',
+                        'TrackChanges',
+                        'TrackChangesData',
+                        'RevisionHistory',
+                        'Pagination',
+                        'WProofreader',
+                        'MathType',
+                        'SlashCommand',
+                        'Template',
+                        'DocumentOutline',
+                        'FormatPainter',
+                        'TableOfContents',
+                        'PasteFromOfficeEnhanced',
+                        'CaseChange',
+                        'AIAdapter',
+                        'AIAssistant',
+                        'AICommands'
+                    ]
                 })
                 .then(function(editor) {
                     editorInstance = editor;
 
+                    // Track last selection in the CKEditor model for toolbar actions.
+                    lastEditorSelection = [];
+                    editor.model.document.selection.on('change:range', function() {
+                        lastEditorSelection = [];
+                        for (const range of editor.model.document.selection.getRanges()) {
+                            lastEditorSelection.push(range.clone());
+                        }
+                    });
+
+                    // Update status + autosave on data changes.
                     editor.model.document.on('change:data', function() {
                         updateStatusFromEditor();
                         scheduleAutosave();
@@ -506,12 +626,153 @@ saveToHistory('document', $filename);
                 })
                 .catch(function(error) {
                     console.error(error);
+                    // Fallback to native editor if CKEditor fails.
+                    if (el) {
+                        setupNativeEditor(el);
+                    }
                 });
+            } else if (el) {
+                // No CKEditor – use native contentEditable fallback.
+                setupNativeEditor(el);
+            }
+        }
+
+        function setupNativeEditor(el) {
+            el.addEventListener('input', function() {
+                updateStatusFromEditor();
+                scheduleAutosave();
+            });
+
+            // Track the last selection inside the editor so we can
+            // insert images (and other objects) back at the right place
+            // after dialogs/modals are used.
+            document.addEventListener('selectionchange', function() {
+                const sel = window.getSelection && window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                const range = sel.getRangeAt(0);
+                let node = range.commonAncestorContainer;
+                while (node && node !== el) {
+                    node = node.parentNode;
+                }
+                if (node === el) {
+                    lastNativeRange = range.cloneRange();
+                }
+            });
+
+            updateStatusFromEditor();
+        }
+
+        function buildColorPalette(container, colors, type) {
+            if (!container || container.dataset.initialized === '1') {
+                return;
+            }
+
+            container.innerHTML = '';
+
+            const header = document.createElement('div');
+            header.className = 'color-palette-header';
+            header.textContent = type === 'text' ? 'Text color' : 'Highlight color';
+            container.appendChild(header);
+
+            colors.forEach(function(color) {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-option';
+                swatch.style.backgroundColor = color;
+                swatch.dataset.color = color;
+                swatch.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    if (type === 'text') {
+                        applyTextColor(color);
+                    } else {
+                        applyHighlightColor(color);
+                    }
+                    closeActiveColorPalette();
+                });
+                container.appendChild(swatch);
+            });
+
+            const footer = document.createElement('div');
+            footer.className = 'color-palette-footer';
+            const label = document.createElement('span');
+            label.textContent = 'Custom';
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.addEventListener('input', function(event) {
+                const value = event.target.value;
+                if (type === 'text') {
+                    applyTextColor(value);
+                } else {
+                    applyHighlightColor(value);
+                }
+            });
+            footer.appendChild(label);
+            footer.appendChild(input);
+            container.appendChild(footer);
+
+            container.dataset.initialized = '1';
+        }
+
+        function closeActiveColorPalette() {
+            if (activeColorPalette) {
+                activeColorPalette.classList.remove('active');
+                activeColorPalette = null;
+            }
+        }
+
+        function toggleColorPalette(type) {
+            const paletteId = type === 'text' ? 'textColorPalette' : 'highlightColorPalette';
+            const palette = document.getElementById(paletteId);
+            if (!palette) return;
+
+            if (palette.dataset.initialized !== '1') {
+                const colors = type === 'text' ? TEXT_COLOR_SWATCHES : HIGHLIGHT_COLOR_SWATCHES;
+                buildColorPalette(palette, colors, type);
+            }
+
+            if (activeColorPalette && activeColorPalette !== palette) {
+                activeColorPalette.classList.remove('active');
+            }
+
+            const willShow = !palette.classList.contains('active');
+            palette.classList.toggle('active', willShow);
+            activeColorPalette = willShow ? palette : null;
+        }
+
+        function initializeColorPalettes() {
+            const textPicker = document.getElementById('textColorPicker');
+            const highlightPicker = document.getElementById('highlightColorPicker');
+
+            if (textPicker) {
+                const trigger = textPicker.querySelector('.color-picker-trigger');
+                if (trigger) {
+                    trigger.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        toggleColorPalette('text');
+                    });
+                }
+            }
+
+            if (highlightPicker) {
+                const trigger = highlightPicker.querySelector('.color-picker-trigger');
+                if (trigger) {
+                    trigger.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        toggleColorPalette('highlight');
+                    });
+                }
+            }
+
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.color-picker-wrapper')) {
+                    closeActiveColorPalette();
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             initializeEditor();
             setInterval(updateStatusFromEditor, 3000);
+            initializeColorPalettes();
 
             const zoomSlider = document.getElementById('zoomSlider');
             if (zoomSlider) {
@@ -538,6 +799,7 @@ saveToHistory('document', $filename);
             if (!value) return;
             
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('heading', { value: value });
                 editorInstance.editing.view.focus();
             } else {
@@ -556,6 +818,7 @@ saveToHistory('document', $filename);
             if (!value) return;
             
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('fontFamily', { value: value });
                 editorInstance.editing.view.focus();
             } else {
@@ -567,6 +830,7 @@ saveToHistory('document', $filename);
             if (!value) return;
             
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('fontSize', { value: value });
                 editorInstance.editing.view.focus();
             } else {
@@ -585,6 +849,7 @@ saveToHistory('document', $filename);
 
         function toggleBold() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('bold');
                 editorInstance.editing.view.focus();
             } else {
@@ -594,6 +859,7 @@ saveToHistory('document', $filename);
 
         function toggleItalic() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('italic');
                 editorInstance.editing.view.focus();
             } else {
@@ -603,6 +869,7 @@ saveToHistory('document', $filename);
 
         function toggleUnderline() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('underline');
                 editorInstance.editing.view.focus();
             } else {
@@ -612,6 +879,7 @@ saveToHistory('document', $filename);
 
         function toggleStrikethrough() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('strikethrough');
                 editorInstance.editing.view.focus();
             } else {
@@ -623,6 +891,7 @@ saveToHistory('document', $filename);
             if (!color) return;
             
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('fontColor', { value: color });
                 editorInstance.editing.view.focus();
             } else {
@@ -634,6 +903,7 @@ saveToHistory('document', $filename);
             if (!color) return;
             
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('fontBackgroundColor', { value: color });
                 editorInstance.editing.view.focus();
             } else {
@@ -652,6 +922,7 @@ saveToHistory('document', $filename);
             };
 
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('alignment', { value: align });
                 editorInstance.editing.view.focus();
             } else if (alignMap[align]) {
@@ -661,6 +932,7 @@ saveToHistory('document', $filename);
 
         function toggleBulletedList() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('bulletedList');
                 editorInstance.editing.view.focus();
             } else {
@@ -670,6 +942,7 @@ saveToHistory('document', $filename);
 
         function toggleNumberedList() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('numberedList');
                 editorInstance.editing.view.focus();
             } else {
@@ -679,6 +952,7 @@ saveToHistory('document', $filename);
 
         function indent() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('indent');
                 editorInstance.editing.view.focus();
             } else {
@@ -688,6 +962,7 @@ saveToHistory('document', $filename);
 
         function outdent() {
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('outdent');
                 editorInstance.editing.view.focus();
             } else {
@@ -700,6 +975,7 @@ saveToHistory('document', $filename);
             if (!url) return;
 
             if (editorInstance) {
+                restoreEditorSelection();
                 editorInstance.execute('link', { href: url });
                 editorInstance.editing.view.focus();
             } else {
@@ -709,10 +985,30 @@ saveToHistory('document', $filename);
 
         function insertToolbarImage() {
             if (editorInstance) {
-                editorInstance.execute('imageUpload');
-                editorInstance.editing.view.focus();
+                // Selection is already tracked in lastEditorSelection.
+                const modal = document.getElementById('imageUploadContainer');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
             } else {
-                document.getElementById('imageUploadContainer').style.display = 'flex';
+                // Remember the caret position inside the editor before opening the modal.
+                const sel = window.getSelection && window.getSelection();
+                if (sel && sel.rangeCount > 0) {
+                    const range = sel.getRangeAt(0);
+                    let node = range.commonAncestorContainer;
+                    const editor = document.getElementById('documentEditor');
+                    while (node && node !== editor) {
+                        node = node.parentNode;
+                    }
+                    if (node === editor) {
+                        lastNativeRange = range.cloneRange();
+                    }
+                }
+
+                const modal = document.getElementById('imageUploadContainer');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
             }
         }
 
@@ -734,6 +1030,235 @@ saveToHistory('document', $filename);
                 html += '</table>';
                 document.execCommand('insertHTML', false, html);
             }
+        }
+
+        // Image upload / insert helpers (native editor)
+
+        let _pendingImageDataUrl = null;
+
+        function showUrlInput() {
+            const urlContainer = document.getElementById('urlInputContainer');
+            if (urlContainer) {
+                urlContainer.style.display = 'block';
+            }
+        }
+
+        function closeImageUpload() {
+            const modal = document.getElementById('imageUploadContainer');
+            const preview = document.getElementById('imagePreview');
+            const fileInput = document.getElementById('imageFile');
+            const urlInput = document.getElementById('imageUrl');
+            const insertBtn = document.getElementById('insertImageBtn');
+            const urlContainer = document.getElementById('urlInputContainer');
+
+            if (modal) modal.style.display = 'none';
+            if (preview) {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
+            if (fileInput) fileInput.value = '';
+            if (urlInput) urlInput.value = '';
+            if (insertBtn) insertBtn.disabled = true;
+            if (urlContainer) urlContainer.style.display = 'none';
+            _pendingImageDataUrl = null;
+        }
+
+        function previewImage(input) {
+            const file = input && input.files && input.files[0];
+            const preview = document.getElementById('imagePreview');
+            const insertBtn = document.getElementById('insertImageBtn');
+
+            if (!file || !preview) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                _pendingImageDataUrl = e.target.result;
+                preview.src = _pendingImageDataUrl;
+                preview.style.display = 'block';
+                if (insertBtn) insertBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function insertImageAtCursor(src) {
+            if (!src) return;
+            if (editorInstance) {
+                // Let CKEditor handle image insertion so it renders correctly.
+                try {
+                    editorInstance.execute('insertImage', { source: [ src ] });
+                } catch (e) {
+                    // Fallback: append raw <img> HTML if insertImage is not available.
+                    const currentHtml = editorInstance.getData();
+                    editorInstance.setData(currentHtml + '<p><img src="' + src + '"></p>');
+                }
+                editorInstance.editing.view.focus();
+                updateStatusFromEditor();
+                scheduleAutosave();
+            } else {
+                const editor = document.getElementById('documentEditor');
+                if (!editor) return;
+
+                editor.focus();
+
+                // Wrap the image in a resizable container so the user
+                // can adjust width/height with the mouse (native fallback).
+                const wrapper = document.createElement('div');
+                wrapper.className = 'resizable-image';
+                const img = document.createElement('img');
+                img.src = src;
+                wrapper.appendChild(img);
+
+                // Add a visible resize handle in the bottom-right corner.
+                enableImageResize(wrapper);
+
+                const sel = window.getSelection && window.getSelection();
+                let inserted = false;
+
+                // Prefer the last saved range inside the editor (before opening the modal)
+                if (lastNativeRange) {
+                    const range = lastNativeRange.cloneRange();
+                    let node = range.commonAncestorContainer;
+                    while (node && node !== editor) {
+                        node = node.parentNode;
+                    }
+                    if (node === editor) {
+                        range.deleteContents();
+                        range.insertNode(wrapper);
+                        range.setStartAfter(wrapper);
+                        range.setEndAfter(wrapper);
+                        if (sel) {
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        }
+                        inserted = true;
+                    }
+                }
+
+                // Fallback: use current selection if it's inside the editor
+                if (!inserted && sel && sel.rangeCount > 0) {
+                    const range = sel.getRangeAt(0);
+                    let container = range.commonAncestorContainer;
+                    while (container && container !== editor) {
+                        container = container.parentNode;
+                    }
+                    if (container === editor) {
+                        range.deleteContents();
+                        range.insertNode(wrapper);
+                        range.setStartAfter(wrapper);
+                        range.setEndAfter(wrapper);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                        inserted = true;
+                    }
+                }
+
+                if (!inserted) {
+                    editor.appendChild(wrapper);
+                }
+
+                updateStatusFromEditor();
+                scheduleAutosave();
+            }
+        }
+
+        function enableImageResize(wrapper) {
+            if (!wrapper) return;
+            const handle = document.createElement('div');
+            handle.className = 'image-resize-handle resize-se';
+            wrapper.appendChild(handle);
+
+            let startX, startY, startWidth, startHeight, aspect;
+
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const rect = wrapper.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = rect.width;
+                startHeight = rect.height || rect.width;
+                aspect = startWidth / startHeight || 1;
+
+                function onMove(ev) {
+                    const dx = ev.clientX - startX;
+                    let newWidth = Math.max(50, startWidth + dx);
+                    let newHeight = newWidth / aspect;
+                    wrapper.style.width = newWidth + 'px';
+                    wrapper.style.height = newHeight + 'px';
+                }
+
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    scheduleAutosave();
+                }
+
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+
+        function deleteSelectedImage() {
+            if (editorInstance) {
+                const selection = editorInstance.model.document.selection;
+                const element = selection.getSelectedElement();
+                if (element && element.is('element', 'image')) {
+                    editorInstance.model.change(function(writer) {
+                        writer.remove(element);
+                    });
+                }
+            } else {
+                const sel = window.getSelection && window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                let node = sel.anchorNode;
+                while (node && node.nodeType === 1 && node.tagName !== 'IMG') {
+                    node = node.parentNode;
+                }
+                if (node && node.tagName === 'IMG') {
+                    node.remove();
+                }
+            }
+        }
+
+        function deleteSelectedTable() {
+            if (editorInstance) {
+                const selection = editorInstance.model.document.selection;
+                const element = selection.getSelectedElement();
+                if (element && element.is('element', 'table')) {
+                    editorInstance.model.change(function(writer) {
+                        writer.remove(element);
+                    });
+                }
+            } else {
+                const sel = window.getSelection && window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                let node = sel.anchorNode;
+                while (node && node.nodeType === 1 && node.tagName !== 'TABLE') {
+                    node = node.parentNode;
+                }
+                if (node && node.tagName === 'TABLE') {
+                    node.remove();
+                }
+            }
+        }
+
+        function insertImageFromFile() {
+            if (!_pendingImageDataUrl) {
+                return;
+            }
+            insertImageAtCursor(_pendingImageDataUrl);
+            closeImageUpload();
+        }
+
+        function insertImageFromUrl() {
+            const urlInput = document.getElementById('imageUrl');
+            if (!urlInput) return;
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            insertImageAtCursor(url);
+            closeImageUpload();
         }
 
         function showDownloadModal() {

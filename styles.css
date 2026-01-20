@@ -166,6 +166,9 @@ header h1 {
     border-radius: 12px 12px 0 0;
     box-shadow: 0 2px 15px rgba(0,0,0,0.08);
     border-bottom: 2px solid #e9ecef;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .editor-toolbar {
@@ -290,6 +293,53 @@ header h1 {
 
 .document-editor p {
     margin-bottom: 1rem;
+}
+
+.document-editor ul,
+.document-editor ol {
+    margin: 0 0 0 2rem;
+    padding-left: 1.5rem;
+}
+
+.document-editor ul {
+    list-style-type: disc;
+}
+
+.document-editor ol {
+    list-style-type: decimal;
+}
+
+.document-editor li {
+    margin: 0.2rem 0;
+}
+
+.document-editor li p {
+    margin: 0;
+}
+
+/* Ensure CKEditor lists (inside .ck-content) render with
+   proper bullets/numbers and alignment, even with global resets. */
+.ck-content ul,
+.ck-content ol {
+    margin: 0 0 0 2rem;
+    padding-left: 1.5rem;
+    list-style-position: outside;
+}
+
+.ck-content ul {
+    list-style-type: disc;
+}
+
+.ck-content ol {
+    list-style-type: decimal;
+}
+
+.ck-content li {
+    margin: 0.2rem 0;
+}
+
+.ck-content li p {
+    margin: 0;
 }
 
 .document-editor table {
@@ -876,6 +926,27 @@ select:focus {
     border-bottom: 1px solid #eee;
 }
 
+.color-palette-footer {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #555;
+}
+
+.color-palette-footer input[type="color"] {
+    width: 32px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid #ccc;
+    background: transparent;
+    cursor: pointer;
+}
+
 /* Image Upload Modal */
 .image-upload-container {
     position: fixed;
@@ -1420,6 +1491,21 @@ select:focus {
     text-align: center;
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     animation: modalSlideIn 0.3s ease;
+}
+
+/* Document image resizing (for images inserted in the editor) */
+.resizable-image {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.resizable-image img {
+    width: 100%;
+    height: auto;
+    display: block;
 }
 
 .confirm-buttons {
