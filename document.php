@@ -434,6 +434,63 @@ saveToHistory('document', $filename);
             '#d0e0e3', '#d9ead3'
         ];
 
+        // Shared styles so exported/printed documents look like the on-screen page.
+        const EXPORT_PAGE_STYLES = `
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.8;
+                color: #333;
+                margin: 0;
+                background: #ffffff;
+            }
+            .page {
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 30px;
+                box-shadow: 0 0 0 1px #e0e0e0;
+                background: #ffffff;
+            }
+            .page h1, .page h2, .page h3 {
+                margin: 1.5rem 0 1rem 0;
+                color: #2c3e50;
+            }
+            .page p {
+                margin: 0 0 1rem 0;
+            }
+            .page ul,
+            .page ol {
+                margin: 0 0 0 2rem;
+                padding-left: 1.5rem;
+                list-style-position: outside;
+            }
+            .page ul {
+                list-style-type: disc;
+            }
+            .page ol {
+                list-style-type: decimal;
+            }
+            .page li {
+                margin: 0.2rem 0;
+            }
+            .page li p {
+                margin: 0;
+            }
+            .page table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1rem 0;
+            }
+            .page table, .page th, .page td {
+                border: 1px solid #ddd;
+                padding: 10px;
+            }
+            .page img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 6px;
+            }
+        `;
+
         function getEditorHtml() {
             if (editorInstance) {
                 return editorInstance.getData();
@@ -1335,87 +1392,120 @@ saveToHistory('document', $filename);
                 });
         }
         
-        function printDocument() {
-            const content = getEditorHtml();
+        // Print the editor exactly as it appears on screen
+        async function printDocument() {
+            const editorEl = document.querySelector('.ck-editor__editable_inline') || document.getElementById('documentEditor');
+            if (!editorEl || typeof html2canvas === 'undefined') {
+                window.print();
+                return;
+            }
+
+            const canvas = await html2canvas(editorEl, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/png');
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <html>
                     <head>
                         <title>Print Document - ${document.getElementById('filename').value}</title>
                         <style>
-                            body { 
-                                font-family: Arial, sans-serif; 
-                                line-height: 1.6; 
-                                margin: 40px;
-                                color: #333;
+                            body {
+                                margin: 0;
+                                padding: 0;
                             }
-                            h1, h2, h3 { color: #2c3e50; }
-                            table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-                            table, th, td { border: 1px solid #ddd; padding: 10px; }
-                            img { max-width: 100%; height: auto; }
-                            .resizable-table { position: relative; }
-                            .resize-handle { display: none; }
-                            @media print {
-                                body { margin: 0; }
+                            img {
+                                width: 100%;
+                                height: auto;
+                                display: block;
+                            }
+                            @page {
+                                margin: 0;
                             }
                         </style>
                     </head>
-                    <body>${content}</body>
+                    <body>
+                        <img src="${imgData}" />
+                    </body>
                 </html>
             `);
             printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
+
+            const img = printWindow.document.querySelector('img');
+            if (img) {
+                img.onload = function() {
+                    printWindow.focus();
+                    printWindow.print();
+                };
+                img.onerror = function() {
+                    printWindow.focus();
+                    printWindow.print();
+                };
+            } else {
+                printWindow.focus();
+                printWindow.print();
+            }
         }
         
-        // Enhanced Export functions with PDF generation
+        // Export to PDF using a screenshot of the editor, so it matches the on-screen layout
         async function exportToPDF() {
             try {
-                showNotification('Generating PDF...', 'info');
+                if (typeof showNotification === 'function') {
+                    showNotification('Generating PDF...', 'info');
+                }
                 
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                const temp = document.createElement('div');
-                temp.style.position = 'absolute';
-                temp.style.left = '-9999px';
-                temp.innerHTML = getEditorHtml();
-                document.body.appendChild(temp);
+                const editorEl = document.querySelector('.ck-editor__editable_inline') || document.getElementById('documentEditor');
+                if (!editorEl || typeof html2canvas === 'undefined' || !window.jspdf) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('PDF export is not available in this browser', 'error');
+                    }
+                    return;
+                }
 
-                const canvas = await html2canvas(temp, {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'pt', 'a4');
+
+                const canvas = await html2canvas(editorEl, {
                     scale: 2,
                     useCORS: true,
                     logging: false
                 });
 
-                document.body.removeChild(temp);
-
                 const imgData = canvas.toDataURL('image/png');
-                const imgWidth = doc.internal.pageSize.getWidth();
+                const pageWidth = doc.internal.pageSize.getWidth();
                 const pageHeight = doc.internal.pageSize.getHeight();
+                const imgWidth = pageWidth;
                 const imgHeight = canvas.height * imgWidth / canvas.width;
                 let heightLeft = imgHeight;
                 let position = 0;
                 
-                doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
                 heightLeft -= pageHeight;
                 
                 // Add additional pages if needed
                 while (heightLeft >= 0) {
                     position = heightLeft - imgHeight;
                     doc.addPage();
-                    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
                     heightLeft -= pageHeight;
                 }
                 
                 const filename = (document.getElementById('filename').value || 'document').replace(/\.[^/.]+$/, "") + '.pdf';
                 doc.save(filename);
                 
-                showNotification('PDF downloaded successfully!');
+                if (typeof showNotification === 'function') {
+                    showNotification('PDF downloaded successfully!', 'success');
+                }
                 closeDownloadModal();
                 
             } catch (error) {
                 console.error('Error generating PDF:', error);
-                showNotification('Error generating PDF. Using print method instead.', 'error');
+                if (typeof showNotification === 'function') {
+                    showNotification('Error generating PDF. Using print method instead.', 'error');
+                }
                 
                 // Fallback to print method
                 const content = getEditorHtml();
@@ -1424,14 +1514,13 @@ saveToHistory('document', $filename);
                     <html>
                         <head>
                             <title>${document.getElementById('filename').value}</title>
-                            <style>
-                                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
-                                table { border-collapse: collapse; width: 100%; }
-                                table, th, td { border: 1px solid #ddd; padding: 8px; }
-                                img { max-width: 100%; height: auto; }
-                            </style>
+                            <style>${EXPORT_PAGE_STYLES}</style>
                         </head>
-                        <body>${content}</body>
+                        <body>
+                            <div class="page ck-content">
+                                ${content}
+                            </div>
+                        </body>
                     </html>
                 `);
                 printWindow.document.close();
@@ -1447,8 +1536,10 @@ saveToHistory('document', $filename);
             const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
                 "xmlns:w='urn:schemas-microsoft-com:office:word' " +
                 "xmlns='http://www.w3.org/TR/REC-html40'>" +
-                "<head><meta charset='utf-8'><title>Export HTML to Word Document</title></head><body>";
-            const footer = "</body></html>";
+                "<head><meta charset='utf-8'><title>Export HTML to Word Document</title><style>" +
+                EXPORT_PAGE_STYLES +
+                "</style></head><body><div class='page ck-content'>";
+            const footer = "</div></body></html>";
             const sourceHTML = header + content + footer;
             
             const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
@@ -1482,15 +1573,12 @@ saveToHistory('document', $filename);
 <head>
     <meta charset="UTF-8">
     <title>${document.getElementById('filename').value}</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }
-        table { border-collapse: collapse; width: 100%; }
-        table, th, td { border: 1px solid #ddd; padding: 8px; }
-        img { max-width: 100%; height: auto; }
-    </style>
+    <style>${EXPORT_PAGE_STYLES}</style>
 </head>
 <body>
-    ${content}
+    <div class="page ck-content">
+        ${content}
+    </div>
 </body>
 </html>`;
             
