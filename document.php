@@ -68,6 +68,39 @@ saveToHistory('document', $filename);
         .saving-status {
             font-size: 13px;
             color: #6c757d;
+            position: relative;
+            padding-left: 22px;
+            min-height: 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        .saving-status::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 14px;
+            height: 14px;
+            margin-top: -7px;
+            border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-top-color: #007bff;
+            animation: saving-spin 0.7s linear infinite;
+            opacity: 0;
+        }
+
+        .saving-status.saving::before {
+            opacity: 1;
+        }
+
+        .saving-status.error {
+            color: #dc3545;
+        }
+
+        @keyframes saving-spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
         }
 
         /* Resizable table styles */
@@ -179,6 +212,38 @@ saveToHistory('document', $filename);
             margin: 1rem 0;
             display: none;
         }
+
+        /* Full-screen saving overlay */
+        .saving-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 15000;
+        }
+
+        .saving-overlay-content {
+            background: white;
+            padding: 1.25rem 1.75rem;
+            border-radius: 10px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #343a40;
+        }
+
+        .saving-overlay-spinner {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid rgba(0,0,0,0.12);
+            border-top-color: #007bff;
+            animation: saving-spin 0.7s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -210,6 +275,14 @@ saveToHistory('document', $filename);
                 <button onclick="closeImageUpload()" class="btn btn-secondary">Cancel</button>
                 <button onclick="insertImageFromFile()" class="btn btn-primary" id="insertImageBtn" disabled>Insert Image</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Saving overlay -->
+    <div class="saving-overlay" id="savingOverlay">
+        <div class="saving-overlay-content">
+            <div class="saving-overlay-spinner"></div>
+            <div>Saving document...</div>
         </div>
     </div>
 
@@ -552,10 +625,13 @@ saveToHistory('document', $filename);
         function setSavingState(state) {
             const el = document.getElementById('savingStatus');
             if (!el) return;
+            el.classList.remove('saving', 'error');
             if (state === 'saving') {
                 el.textContent = 'Saving...';
+                el.classList.add('saving');
             } else if (state === 'error') {
                 el.textContent = 'Error';
+                el.classList.add('error');
             } else {
                 el.textContent = 'Saved';
             }
@@ -1640,6 +1716,14 @@ saveToHistory('document', $filename);
             const html = getEditorHtml();
             const payload = { html: html };
             const contentJson = JSON.stringify(payload);
+
+            const overlay = document.getElementById('savingOverlay');
+
+            // For manual saves, show spinner + full-screen overlay here.
+            if (!isAutosave) {
+                setSavingState('saving');
+                if (overlay) overlay.style.display = 'flex';
+            }
             
             const formData = new FormData();
             formData.append('type', 'document');
@@ -1673,6 +1757,11 @@ saveToHistory('document', $filename);
                 console.error('Error:', error);
                 showNotification('Error saving document', 'error');
                 setSavingState('error');
+            })
+            .finally(() => {
+                if (!isAutosave && overlay) {
+                    overlay.style.display = 'none';
+                }
             });
         }
     </script>
